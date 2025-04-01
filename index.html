@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Phalènes du Bouleau et Pollution - Simulation Optimisée</title>
+  <style>
+    body {
+      display: flex;
+      font-family: Arial, sans-serif;
+    }
+    #canvas-container {
+      position: relative;
+    }
+    canvas {
+      border: 1px solid #000;
+      margin-right: 20px;
+    }
+    #controls {
+      margin-right: 20px;
+    }
+    #explanations {
+      max-width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <canvas id="simulation" width="600" height="400"></canvas>
+  </div>
+
+  <div id="controls">
+    <label for="pollutionRange">Niveau de pollution :</label><br>
+    <input type="range" id="pollutionRange" min="0" max="1" step="0.01" value="0">
+  </div>
+
+  <div id="explanations">
+    <h2>Contexte et explications</h2>
+    <p>
+      Cette simulation illustre la théorie de la sélection naturelle à travers 
+      l’exemple historique des <strong>phalènes du bouleau</strong> 
+      (<em>Biston betularia</em>).
+    </p>
+    <p>
+      Avant la révolution industrielle, la forme claire de ces papillons se 
+      confondait avec les troncs d’arbres également clairs, la protégeant ainsi 
+      des prédateurs. Lorsque la pollution a noirci les écorces (dépôts de suie), 
+      la forme sombre est devenue plus avantageuse : elle était mieux camouflée 
+      et survécut plus facilement.
+    </p>
+    <p>
+      Dans cette page, faites glisser le curseur pour modifier la pollution 
+      (qui fonce ou éclaire le fond). Les phalènes “clairs” survivent mieux 
+      sur un fond clair, tandis que les phalènes “foncés” survivent mieux 
+      sur un fond sombre. Au fil du temps, vous verrez la proportion de phalènes 
+      clairs et foncés évoluer en fonction de l’environnement.
+    </p>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('simulation');
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Slider pour le niveau de pollution
+    const pollutionSlider = document.getElementById('pollutionRange');
+
+    // Variables de simulation
+    let pollutionLevel = 0;
+    let moths = [];
+    const populationSize = 100;       // Taille de population initiale
+    const MAX_POPULATION = 300;       // Limite max de phalènes
+    const SELECTION_INTERVAL = 500;   // Intervalle de sélection en ms (0,5 s)
+
+    // Pour mesurer le temps écoulé entre deux sélections
+    let lastSelectionTime = 0;
+
+    // Initialisation : 80% phalènes clairs, 20% foncés
+    for (let i = 0; i < populationSize; i++) {
+      moths.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        color: Math.random() < 0.8 ? 'white' : 'black'
+      });
+    }
+
+    // Dessin du fond (évolue entre blanc et noir)
+    function drawBackground() {
+      const shade = Math.floor(255 - pollutionLevel * 255);
+      ctx.fillStyle = `rgb(${shade}, ${shade}, ${shade})`;
+      ctx.fillRect(0, 0, width, height);
+    }
+
+    // Dessin des phalènes
+    function drawMoths() {
+      moths.forEach(moth => {
+        ctx.beginPath();
+        ctx.arc(moth.x, moth.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = moth.color;
+        ctx.fill();
+      });
+    }
+
+    // Sélection naturelle + reproduction (moins souvent pour ne pas ramer)
+    function selection() {
+      // 1. Supprimer quelques phalènes mal camouflés
+      for (let i = moths.length - 1; i >= 0; i--) {
+        const moth = moths[i];
+        // Vérification du camouflage selon la pollution
+        const isCamouflaged = (pollutionLevel < 0.5 && moth.color === 'white') ||
+                              (pollutionLevel >= 0.5 && moth.color === 'black');
+        // Phalènes mal camouflés : 10% de chance de disparaître
+        if (!isCamouflaged && Math.random() < 0.1) {
+          moths.splice(i, 1);
+        }
+      }
+
+      // 2. Reproduction
+      const newMoths = [];
+      moths.forEach(moth => {
+        // 20% de chance de se reproduire
+        if (Math.random() < 0.2) {
+          let newColor = moth.color;
+          // 5% de chance de mutation (inversion de la couleur)
+          if (Math.random() < 0.05) {
+            newColor = (moth.color === 'white') ? 'black' : 'white';
+          }
+          newMoths.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            color: newColor
+          });
+        }
+      });
+
+      // Ajout des nouveaux phalènes
+      moths.push(...newMoths);
+
+      // 3. Limiter la population totale pour éviter l’explosion du tableau
+      if (moths.length > MAX_POPULATION) {
+        // On conserve seulement les derniers éléments (ou on peut couper aléatoirement)
+        moths = moths.slice(moths.length - MAX_POPULATION);
+      }
+    }
+
+    // Dessin (appelé à chaque frame)
+    function draw() {
+      drawBackground();
+      drawMoths();
+    }
+
+    // Boucle principale d’animation
+    function loop(timestamp) {
+      // 1. Mettre à jour le niveau de pollution
+      pollutionLevel = parseFloat(pollutionSlider.value);
+
+      // 2. Exécuter la sélection à intervalle régulier (toutes les 0,5 secondes)
+      if (timestamp - lastSelectionTime > SELECTION_INTERVAL) {
+        selection();
+        lastSelectionTime = timestamp;
+      }
+
+      // 3. Dessiner
+      draw();
+
+      // 4. Reboucler
+      requestAnimationFrame(loop);
+    }
+
+    // Lancement de l’animation
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
